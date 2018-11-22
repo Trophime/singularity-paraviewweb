@@ -1,0 +1,52 @@
+Bootstrap: docker
+From: kitware/paraviewweb:pvw-base-v5.6.0
+
+%setup
+echo "Looking in directory '$SINGULARITY_ROOTFS' for /bin/sh"
+if [ ! -x "$SINGULARITY_ROOTFS/bin/sh" ]; then
+echo "Hrmm, this container does not have /bin/sh installed..."
+exit 1
+fi
+
+mkdir -p $SINGULARITY_ROOTFS/tmp/var/log/apache2
+mkdir -p $SINGULARITY_ROOTFS/tmp/var/run/apache2
+mkdir -p $SINGULARITY_ROOTFS/tmp/var/lock/apache2
+cp -r /home/LNCMI-G/trophime/paraviewweb/tools/docker/demo/config $SINGULARITY_ROOTFS/tmp
+
+exit 0
+
+%environment
+export LANG=C
+
+PORT=8080
+ALLOW_HTTP=true
+URL=localhost
+export PORT ALLOW_HTTP URL
+
+%post
+cp /tmp/config/launcher/launcher-template.json /opt/wslink-launcher/launcher-template.json
+
+/opt/paraviewweb/scripts/addEndpoints.sh glance /opt/paraview/install/share/paraview-5.6/web/glance/www
+/opt/paraviewweb/scripts/addEndpoints.sh lite /opt/paraview/install/share/paraview-5.6/web/lite/www
+/opt/paraviewweb/scripts/addEndpoints.sh divvy /opt/paraview/install/share/paraview-5.6/web/divvy/www
+/opt/paraviewweb/scripts/addEndpoints.sh visualizer /opt/paraview/install/share/paraview-5.6/web/visualizer/www
+
+chmod go+w /opt/wslink-launcher
+perl -pi -e "s|/var/log|/tmp/var/log|g" /etc/apache2/sites-enabled/001-pvw.conf
+
+# prepare apache2
+perl -pi -e "s|/var|/tmp/var|g" /etc/apache2/envvars
+chmod o+w /tmp/var/log/apache2
+chmod o+w /tmp/var/run/apache2
+chmod o+w /tmp/var/lock/apache2
+
+# Change the port we are listening on to 8080 instead of 80
+sed -ie "s/^\(Listen\).*/\1 8080/" /etc/apache2/ports.conf
+
+%startscript
+
+echo "Starting Apache webserver"
+apache2ctl > /tmp/apache2ctl.log 2>&1 &
+
+echo "Starting the wslink launcher"
+#nohup /opt/paraviewweb/scripts/start.sh > /tmp/paraviewweb.log 2>&1 &

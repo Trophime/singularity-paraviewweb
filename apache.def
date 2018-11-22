@@ -1,0 +1,35 @@
+Bootstrap: docker
+From: debian:stretch
+
+%setup
+echo "Looking in directory '$SINGULARITY_ROOTFS' for /bin/sh"
+if [ ! -x "$SINGULARITY_ROOTFS/bin/sh" ]; then
+echo "Hrmm, this container does not have /bin/sh installed..."
+exit 1
+fi
+
+mkdir -p $SINGULARITY_ROOTFS/tmp/var/log/apache2
+mkdir -p $SINGULARITY_ROOTFS/tmp/var/run/apache2
+mkdir -p $SINGULARITY_ROOTFS/tmp/var/lock/apache2
+cp -r /home/LNCMI-G/trophime/paraviewweb/tools/docker/demo/config $SINGULARITY_ROOTFS/tmp
+
+exit 0
+
+%post
+apt update
+apt install -y apache2
+perl -pi -e "s|/var|/tmp/var|g" /etc/apache2/envvars
+chmod o+w /tmp/var/log/apache2
+chmod o+w /tmp/var/run/apache2
+chmod o+w /tmp/var/lock/apache2
+
+# perl -pi -e "s|LogLevel warn|LogLevel debug|g" /etc/apache2/apache2.conf
+
+# Change the port we are listening on to 8080 instead of 80
+sed -ie "s/^\(Listen\).*/\1 8080/" /etc/apache2/ports.conf
+
+%startscript
+
+echo "Starting Apache webserver"
+apache2ctl start > /tmp/apache2ctl.log 2>&1
+#apache2 -f /usr/local/apache2/conf/httpd.conf > /tmp/apache2.log 2>&1
