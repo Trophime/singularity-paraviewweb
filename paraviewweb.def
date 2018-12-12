@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: kitware/paraviewweb:pvw-base-v5.6.0
+From: kitware/paraviewweb:pvw-base-osmesa-v5.6.0
 
 %setup
 echo "Looking in directory '$SINGULARITY_ROOTFS' for /bin/sh"
@@ -33,6 +33,7 @@ cp /tmp/config/launcher/launcher-template.json /opt/wslink-launcher/launcher-tem
 
 chmod go+w /opt/wslink-launcher
 perl -pi -e "s|/var/log|/tmp/var/log|g" /etc/apache2/sites-enabled/001-pvw.conf
+perl -pi -e "s|80|8080|g" /etc/apache2/sites-enabled/001-pvw.conf
 
 # prepare apache2
 perl -pi -e "s|/var|/tmp/var|g" /etc/apache2/envvars
@@ -46,7 +47,7 @@ sed -ie "s/^\(Listen\).*/\1 8080/" /etc/apache2/ports.conf
 %startscript
 
 echo "Starting Apache webserver"
-apache2ctl > /tmp/apache2ctl.log 2>&1 &
+apache2ctl start > /tmp/apache2ctl.log 2>&1
 
 echo "Starting the wslink launcher"
-#nohup /opt/paraviewweb/scripts/start.sh > /tmp/paraviewweb.log 2>&1 &
+nohup /opt/paraviewweb/scripts/start.sh > /tmp/paraviewweb.log 2>&1 &
